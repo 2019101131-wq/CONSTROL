@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CONSTROL — Sistema de Control de Obras</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">⬡</div>
+    <div>
+      <div class="brand-name">CONSTROL</div>
+      <div class="brand-sub">SISTEMA INDUSTRIAL v2.0</div>
+    </div>
+  </div>
+
+  <div class="obra-selector">
+    <label>PROYECTO ACTIVO</label>
+    <div class="obra-name" id="obraNameDisplay">Sin proyecto</div>
+    <button class="btn-config" onclick="openObraConfig()">⚙ Configurar obra</button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-group-label">PRINCIPAL</div>
+    <a href="#" class="nav-item active" onclick="showModule('dashboard')">
+      <span class="nav-icon">◈</span><span>Dashboard</span>
+    </a>
+    <div class="nav-group-label">FINANZAS</div>
+    <a href="#" class="nav-item" onclick="showModule('cronograma')">
+      <span class="nav-icon">◷</span><span>Cronograma de Pagos</span>
+    </a>
+    <a href="#" class="nav-item" onclick="showModule('gastos')">
+      <span class="nav-icon">◈</span><span>Gastos Adicionales</span>
+    </a>
+    <div class="nav-group-label">MATERIALES</div>
+    <a href="#" class="nav-item" onclick="showModule('despacho')">
+      <span class="nav-icon">▦</span><span>Despacho de Materiales</span>
+    </a>
+    <a href="#" class="nav-item" onclick="showModule('balance')">
+      <span class="nav-icon">≡</span><span>Balance de Materiales</span>
+    </a>
+    <a href="#" class="nav-item" onclick="showModule('presupuesto')">
+      <span class="nav-icon">▤</span><span>Presupuesto de Materiales</span>
+    </a>
+    <div class="nav-group-label">ANÁLISIS</div>
+    <a href="#" class="nav-item" onclick="showModule('desviaciones')">
+      <span class="nav-icon">↕</span><span>Análisis de Desviaciones</span>
+    </a>
+    <a href="#" class="nav-item" onclick="showModule('estandar')">
+      <span class="nav-icon">◉</span><span>Control Sobre/Sub Estándar</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sync-status" id="syncStatus">
+      <span class="sync-dot"></span>
+      <span id="syncText">Sincronizando...</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main id="mainContent">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <div class="breadcrumb" id="breadcrumb">Dashboard</div>
+    </div>
+    <div class="topbar-right">
+      <div class="datetime" id="datetime"></div>
+    </div>
+  </header>
+
+  <!-- ===== DASHBOARD ===== -->
+  <section id="module-dashboard" class="module active">
+    <div class="module-header">
+      <h1>DASHBOARD GENERAL</h1>
+      <div class="module-actions">
+        <button class="btn-primary" onclick="exportDashboard()">⬇ Exportar Reporte</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card">
+        <div class="kpi-label">PRESUPUESTO TOTAL</div>
+        <div class="kpi-value" id="kpi-presupuesto">S/ 0.00</div>
+        <div class="kpi-sub">Valor estándar del proyecto</div>
+      </div>
+      <div class="kpi-card kpi-alert">
+        <div class="kpi-label">GASTO REAL TOTAL</div>
+        <div class="kpi-value" id="kpi-real">S/ 0.00</div>
+        <div class="kpi-sub">Incluye materiales + adicionales</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">PENDIENTE POR PAGAR</div>
+        <div class="kpi-value" id="kpi-pendiente">S/ 0.00</div>
+        <div class="kpi-sub">Cronograma + gastos extras</div>
+      </div>
+      <div class="kpi-card kpi-success">
+        <div class="kpi-label">AVANCE DE OBRA</div>
+        <div class="kpi-value" id="kpi-avance">0%</div>
+        <div class="kpi-sub">Pagos completados vs total</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">MATERIALES DESPACHADOS</div>
+        <div class="kpi-value" id="kpi-materiales">S/ 0.00</div>
+        <div class="kpi-sub">Costo acumulado de materiales</div>
+      </div>
+      <div class="kpi-card kpi-warn">
+        <div class="kpi-label">DESVIACIÓN PRESUPUESTAL</div>
+        <div class="kpi-value" id="kpi-desviacion">S/ 0.00</div>
+        <div class="kpi-sub">Real vs. Estándar</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">AVANCE FINANCIERO</div>
+        <canvas id="chartFinanciero" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">DISTRIBUCIÓN DE GASTOS</div>
+        <canvas id="chartDistribucion" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">TOP MATERIALES (por costo)</div>
+        <canvas id="chartMateriales" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="dashboard-tables">
+      <div class="dt-section">
+        <div class="dt-title">ÚLTIMOS PAGOS REGISTRADOS</div>
+        <table class="ind-table" id="tblUltimosPagos">
+          <thead><tr><th>ETAPA</th><th>FECHA</th><th>MONTO</th><th>ESTADO</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="dt-section">
+        <div class="dt-title">ALERTAS ACTIVAS</div>
+        <div id="alertasContainer"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CRONOGRAMA DE PAGOS ===== -->
+  <section id="module-cronograma" class="module">
+    <div class="module-header">
+      <h1>CRONOGRAMA DE PAGOS</h1>
+      <div class="module-actions">
+        <button class="btn-primary" onclick="openModal('modalCronograma')">+ Agregar Pago</button>
+        <button class="btn-secondary" onclick="exportToExcel('cronograma')">⬇ Excel</button>
+        <button class="btn-danger" onclick="clearModule('cronograma')">🗑 Limpiar</button>
+      </div>
+    </div>
+    <div class="summary-bar" id="cronogramaSummary"></div>
+    <div class="table-container">
+      <table class="ind-table" id="tblCronograma">
+        <thead>
+          <tr>
+            <th>#</th><th>ETAPA</th><th>FECHA PAGO</th><th>MONTO</th>
+            <th>ESTADO</th><th>OBSERVACIONES</th><th>ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== GASTOS ADICIONALES ===== -->
+  <section id="module-gastos" class="module">
+    <div class="module-header">
+      <h1>GASTOS ADICIONALES</h1>
+      <div class="module-actions">
+        <button class="btn-primary" onclick="openModal('modalGasto')">+ Agregar Gasto</button>
+        <button class="btn-secondary" onclick="exportToExcel('gastos')">⬇ Excel</button>
+        <button class="btn-danger" onclick="clearModule('gastos')">🗑 Limpiar</button>
+      </div>
+    </div>
+    <div class="summary-bar" id="gastosSummary"></div>
+    <div class="table-container">
+      <table class="ind-table" id="tblGastos">
+        <thead>
+          <tr>
+            <th>#</th><th>FECHA COMPRA</th><th>DESCRIPCIÓN</th><th>COSTO TOTAL</th>
+            <th>FECHA PAGO</th><th>MONTO PAGADO</th><th>PENDIENTE</th><th>ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== DESPACHO DE MATERIALES ===== -->
+  <section id="module-despacho" class="module">
+    <div class="module-header">
+      <h1>DESPACHO DE MATERIALES</h1>
+      <div class="module-actions">
+        <button class="btn-primary" onclick="openModal('modalDespacho')">+ Registrar Despacho</button>
+        <button class="btn-secondary" onclick="exportToExcel('despacho')">⬇ Excel</button>
+        <button class="btn-danger" onclick="clearModule('despacho')">🗑 Limpiar</button>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="filterDespacho" placeholder="🔍 Buscar material, guía, responsable..." oninput="filterTable('despacho')">
+      <input type="date" id="filterDespachoFecha1" onchange="filterTable('despacho')">
+      <input type="date" id="filterDespachoFecha2" onchange="filterTable('despacho')">
+    </div>
+    <div class="summary-bar" id="despachoSummary"></div>
+    <div class="table-container">
+      <table class="ind-table" id="tblDespacho">
+        <thead>
+          <tr>
+            <th>#</th><th>FECHA</th><th>N° GUÍA</th><th>MATERIAL</th>
+            <th>UNIDAD</th><th>CANTIDAD</th><th>COSTO UNIT.</th>
+            <th>COSTO TOTAL</th><th>RESPONSABLE</th><th>OBS.</th><th>ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== BALANCE DE MATERIALES ===== -->
+  <section id="module-balance" class="module">
+    <div class="module-header">
+      <h1>BALANCE DE MATERIALES</h1>
+      <div class="module-actions">
+        <button class="btn-secondary" onclick="exportToExcel('balance')">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="info-banner">⟳ Generado automáticamente desde Despacho de Materiales</div>
+    <div class="table-container">
+      <table class="ind-table" id="tblBalance">
+        <thead>
+          <tr>
+            <th>#</th><th>MATERIAL</th><th>UNIDAD</th><th>CANT. TOTAL USADA</th>
+            <th>COSTO UNIT. PROM.</th><th>COSTO ACUMULADO</th><th>% DEL TOTAL</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== PRESUPUESTO DE MATERIALES ===== -->
+  <section id="module-presupuesto" class="module">
+    <div class="module-header">
+      <h1>PRESUPUESTO DE MATERIALES</h1>
+      <div class="module-actions">
+        <button class="btn-primary" onclick="openModal('modalPresupuesto')">+ Agregar Material</button>
+        <button class="btn-secondary" onclick="exportToExcel('presupuesto')">⬇ Excel</button>
+        <button class="btn-danger" onclick="clearModule('presupuesto')">🗑 Limpiar</button>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="filterPresupuesto" placeholder="🔍 Buscar material, etapa, piso..." oninput="filterTable('presupuesto')">
+      <select id="filterPresupuestoPiso" onchange="filterTable('presupuesto')">
+        <option value="">Todos los pisos</option>
+      </select>
+      <select id="filterPresupuestoEtapa" onchange="filterTable('presupuesto')">
+        <option value="">Todas las etapas</option>
+      </select>
+    </div>
+    <div class="table-container">
+      <table class="ind-table" id="tblPresupuesto">
+        <thead>
+          <tr>
+            <th>#</th><th>PISO</th><th>ETAPA</th><th>CATEGORÍA</th>
+            <th>MATERIAL</th><th>UNIDAD</th><th>CANT. ESTÁNDAR</th>
+            <th>COSTO UNIT.</th><th>VALOR ESTÁNDAR</th><th>ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== ANÁLISIS DE DESVIACIONES ===== -->
+  <section id="module-desviaciones" class="module">
+    <div class="module-header">
+      <h1>ANÁLISIS DE DESVIACIONES</h1>
+      <div class="module-actions">
+        <button class="btn-secondary" onclick="exportToExcel('desviaciones')">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="info-banner">⟳ Calculado automáticamente: Presupuesto vs. Despacho real</div>
+    <div class="table-container">
+      <table class="ind-table" id="tblDesviaciones">
+        <thead>
+          <tr>
+            <th>MATERIAL</th><th>UNIDAD</th>
+            <th>CANT. ESTÁNDAR</th><th>CANT. REAL</th><th>DEV. CANTIDAD</th><th>% DEV.</th>
+            <th>VAL. ESTÁNDAR</th><th>VAL. REAL</th><th>DEV. ECONÓMICA</th><th>ESTADO</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== CONTROL SOBRE/SUB ESTÁNDAR ===== -->
+  <section id="module-estandar" class="module">
+    <div class="module-header">
+      <h1>CONTROL SOBRE / SUB ESTÁNDAR</h1>
+      <div class="module-actions">
+        <button class="btn-secondary" onclick="exportToExcel('estandar')">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="estandarKPIs">
+      <div class="kpi-card kpi-danger-card">
+        <div class="kpi-label">SOBRECONSUMO TOTAL</div>
+        <div class="kpi-value" id="estandar-sobre">S/ 0.00</div>
+      </div>
+      <div class="kpi-card kpi-success">
+        <div class="kpi-label">SUBCONSUMO TOTAL</div>
+        <div class="kpi-value" id="estandar-sub">S/ 0.00</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">DIFERENCIA NETA</div>
+        <div class="kpi-value" id="estandar-neta">S/ 0.00</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">EFICIENCIA GENERAL</div>
+        <div class="kpi-value" id="estandar-eficiencia">0%</div>
+      </div>
+    </div>
+    <div class="table-container">
+      <table class="ind-table" id="tblEstandar">
+        <thead>
+          <tr>
+            <th>MATERIAL</th><th>VAL. ESTÁNDAR</th><th>VAL. REAL</th>
+            <th>DIFERENCIA</th><th>% DESVIACIÓN</th><th>TIPO</th><th>ESTADO</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Modal Obra Config -->
+<div id="modalObraConfig" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>CONFIGURACIÓN DE OBRA</h2>
+      <button class="modal-close" onclick="closeModal('modalObraConfig')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>NOMBRE DE LA OBRA</label>
+        <input type="text" id="obraNombre" placeholder="Ej: Edificio Residencial Torre Norte"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>FECHA INICIO</label>
+          <input type="date" id="obraInicio"/>
+        </div>
+        <div class="form-group">
+          <label>FECHA FIN ESTIMADA</label>
+          <input type="date" id="obraFin"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>RESPONSABLE</label>
+        <input type="text" id="obraResponsable" placeholder="Nombre del jefe de obra"/>
+      </div>
+      <div class="form-group">
+        <label>PRESUPUESTO BASE (S/)</label>
+        <input type="number" id="obraPresupuesto" placeholder="0.00" step="0.01"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modalObraConfig')">Cancelar</button>
+      <button class="btn-primary" onclick="saveObraConfig()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cronograma -->
+<div id="modalCronograma" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modalCronogramaTitle">REGISTRAR PAGO</h2>
+      <button class="modal-close" onclick="closeModal('modalCronograma')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editCronogramaId"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ETAPA DE LA OBRA</label>
+          <input type="text" id="cronoEtapa" placeholder="Ej: Cimentación, Estructura, etc."/>
+        </div>
+        <div class="form-group">
+          <label>FECHA DE PAGO</label>
+          <input type="date" id="cronoFecha"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>MONTO (S/)</label>
+          <input type="number" id="cronoMonto" placeholder="0.00" step="0.01"/>
+        </div>
+        <div class="form-group">
+          <label>ESTADO</label>
+          <select id="cronoEstado">
+            <option value="PENDIENTE">PENDIENTE</option>
+            <option value="PAGADO">PAGADO</option>
+            <option value="PARCIAL">PARCIAL</option>
+            <option value="VENCIDO">VENCIDO</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>OBSERVACIONES</label>
+        <textarea id="cronoObs" rows="3" placeholder="Notas adicionales..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modalCronograma')">Cancelar</button>
+      <button class="btn-primary" onclick="saveCronograma()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Gasto -->
+<div id="modalGasto" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modalGastoTitle">REGISTRAR GASTO ADICIONAL</h2>
+      <button class="modal-close" onclick="closeModal('modalGasto')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editGastoId"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>FECHA COMPRA/SERVICIO</label>
+          <input type="date" id="gastoFechaCompra"/>
+        </div>
+        <div class="form-group">
+          <label>COSTO TOTAL (S/)</label>
+          <input type="number" id="gastoCosto" placeholder="0.00" step="0.01" oninput="calcPendienteGasto()"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>DESCRIPCIÓN</label>
+        <input type="text" id="gastoDescripcion" placeholder="Detalle del gasto o servicio..."/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>FECHA DE PAGO</label>
+          <input type="date" id="gastoFechaPago"/>
+        </div>
+        <div class="form-group">
+          <label>MONTO PAGADO (S/)</label>
+          <input type="number" id="gastoPagado" placeholder="0.00" step="0.01" oninput="calcPendienteGasto()"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>PENDIENTE</label>
+        <input type="number" id="gastoPendiente" placeholder="0.00" readonly class="input-readonly"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modalGasto')">Cancelar</button>
+      <button class="btn-primary" onclick="saveGasto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Despacho -->
+<div id="modalDespacho" class="modal-overlay" style="display:none">
+  <div class="modal-box modal-wide">
+    <div class="modal-header">
+      <h2 id="modalDespachoTitle">REGISTRAR DESPACHO</h2>
+      <button class="modal-close" onclick="closeModal('modalDespacho')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editDespachoId"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>FECHA</label>
+          <input type="date" id="despFecha"/>
+        </div>
+        <div class="form-group">
+          <label>N° GUÍA</label>
+          <input type="text" id="despGuia" placeholder="G-0001"/>
+        </div>
+        <div class="form-group">
+          <label>RESPONSABLE</label>
+          <input type="text" id="despResponsable" placeholder="Nombre"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>MATERIAL</label>
+          <input type="text" id="despMaterial" placeholder="Nombre del material"/>
+        </div>
+        <div class="form-group">
+          <label>UNIDAD</label>
+          <input type="text" id="despUnidad" placeholder="kg, m3, unid..."/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>CANTIDAD</label>
+          <input type="number" id="despCantidad" placeholder="0" step="0.01" oninput="calcCostoDespacho()"/>
+        </div>
+        <div class="form-group">
+          <label>COSTO UNITARIO (S/)</label>
+          <input type="number" id="despCostoUnit" placeholder="0.00" step="0.01" oninput="calcCostoDespacho()"/>
+        </div>
+        <div class="form-group">
+          <label>COSTO TOTAL (S/)</label>
+          <input type="number" id="despCostoTotal" placeholder="0.00" readonly class="input-readonly"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>OBSERVACIONES</label>
+        <textarea id="despObs" rows="2" placeholder="Notas..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modalDespacho')">Cancelar</button>
+      <button class="btn-primary" onclick="saveDespacho()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Presupuesto -->
+<div id="modalPresupuesto" class="modal-overlay" style="display:none">
+  <div class="modal-box modal-wide">
+    <div class="modal-header">
+      <h2 id="modalPresupuestoTitle">AGREGAR MATERIAL AL PRESUPUESTO</h2>
+      <button class="modal-close" onclick="closeModal('modalPresupuesto')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editPresupuestoId"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>PISO</label>
+          <input type="text" id="presupPiso" placeholder="1er Piso, 2do Piso..."/>
+        </div>
+        <div class="form-group">
+          <label>ETAPA</label>
+          <input type="text" id="presupEtapa" placeholder="Cimentación, Estructura..."/>
+        </div>
+        <div class="form-group">
+          <label>CATEGORÍA</label>
+          <input type="text" id="presupCategoria" placeholder="Concreto, Fierro..."/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>MATERIAL</label>
+          <input type="text" id="presupMaterial" placeholder="Nombre del material"/>
+        </div>
+        <div class="form-group">
+          <label>UNIDAD</label>
+          <input type="text" id="presupUnidad" placeholder="kg, m3, bolsa..."/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>CANTIDAD ESTÁNDAR</label>
+          <input type="number" id="presupCantidad" placeholder="0" step="0.01" oninput="calcValorPresupuesto()"/>
+        </div>
+        <div class="form-group">
+          <label>COSTO UNITARIO (S/)</label>
+          <input type="number" id="presupCostoUnit" placeholder="0.00" step="0.01" oninput="calcValorPresupuesto()"/>
+        </div>
+        <div class="form-group">
+          <label>VALOR ESTÁNDAR (S/)</label>
+          <input type="number" id="presupValor" placeholder="0.00" readonly class="input-readonly"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modalPresupuesto')">Cancelar</button>
+      <button class="btn-primary" onclick="savePresupuesto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div id="confirmDialog" class="modal-overlay" style="display:none">
+  <div class="modal-box modal-sm">
+    <div class="modal-header danger-header">
+      <h2>⚠ CONFIRMAR ELIMINACIÓN</h2>
+    </div>
+    <div class="modal-body">
+      <p id="confirmMessage">¿Está seguro que desea eliminar este registro?</p>
+      <p class="confirm-warning">Esta acción no se puede deshacer.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('confirmDialog')">Cancelar</button>
+      <button class="btn-danger" id="confirmOkBtn">Confirmar Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast" style="display:none"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
